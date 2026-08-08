@@ -1,0 +1,6 @@
+{
+  "name": "Aura Beauty & Perfumes",
+  "description": "Catálogo exclusivo de perfumes, body splash, cremas y lociones con administración completa, carrito de compras y pagos por Yappy",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
