@@ -316,22 +316,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       });
 
       const data = await res.json().catch(() => null);
-      if (data && data.success) {
-        showToast(isUpdate ? 'Producto actualizado' : 'Producto creado con éxito', 'success');
+      if (res.ok && data && data.success) {
+        showToast(isUpdate ? 'Producto actualizado con éxito' : 'Producto creado con éxito', 'success');
         setIsProductModalOpen(false);
         setEditingProduct(null);
         onRefreshData();
       } else {
-        showToast(isUpdate ? 'Producto actualizado' : 'Producto creado', 'success');
-        setIsProductModalOpen(false);
-        setEditingProduct(null);
-        onRefreshData();
+        showToast(data?.error || 'Error al guardar el producto', 'error');
       }
     } catch (err) {
-      showToast('Producto guardado correctamente', 'success');
-      setIsProductModalOpen(false);
-      setEditingProduct(null);
-      onRefreshData();
+      showToast('Error de conexión al guardar producto', 'error');
     }
   };
 
@@ -344,16 +338,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         headers: { Authorization: `Bearer ${adminToken || 'Seyou010328'}` }
       });
       const data = await res.json().catch(() => null);
-      if (data && data.success) {
+      if (res.ok && data && data.success) {
         showToast('Producto eliminado correctamente', 'success');
         onRefreshData();
       } else {
-        showToast('Producto eliminado', 'success');
-        onRefreshData();
+        showToast(data?.error || 'Error al eliminar producto', 'error');
       }
     } catch (err) {
-      showToast('Producto eliminado', 'success');
-      onRefreshData();
+      showToast('Error de conexión al eliminar producto', 'error');
     }
   };
 
@@ -370,16 +362,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       });
 
       const data = await res.json().catch(() => null);
-      if (data && data.success) {
+      if (res.ok && data && data.success) {
         showToast(`Estado del pedido #${orderId} actualizado a ${newStatus}`, 'success');
         fetchOrders(adminToken || 'Seyou010328');
       } else {
-        showToast(`Estado del pedido #${orderId} actualizado a ${newStatus}`, 'success');
-        fetchOrders(adminToken || 'Seyou010328');
+        showToast(data?.error || 'Error al actualizar pedido', 'error');
       }
     } catch (e) {
-      showToast(`Estado del pedido #${orderId} actualizado`, 'success');
-      fetchOrders(adminToken || 'Seyou010328');
+      showToast('Error al actualizar estado del pedido', 'error');
     }
   };
 
@@ -397,16 +387,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       });
 
       const data = await res.json().catch(() => null);
-      if (data && data.success) {
-        showToast('Configuración de la tienda guardada', 'success');
+      if (res.ok && data && data.success) {
+        showToast('Configuración de la tienda guardada con éxito', 'success');
         onRefreshData();
       } else {
-        showToast('Configuración actualizada correctamente', 'success');
-        onRefreshData();
+        showToast(data?.error || 'Error al guardar configuración', 'error');
       }
     } catch (e) {
-      showToast('Configuración guardada en modo local', 'success');
-      onRefreshData();
+      showToast('Error de conexión al guardar configuración', 'error');
     }
   };
 

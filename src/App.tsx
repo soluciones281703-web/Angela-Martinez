@@ -71,8 +71,8 @@ export default function App() {
   const loadDataFromServer = async () => {
     try {
       const [prodRes, confRes] = await Promise.all([
-        fetch('/api/products'),
-        fetch('/api/config')
+        fetch(`/api/products?t=${Date.now()}`, { headers: { 'Cache-Control': 'no-cache' } }),
+        fetch(`/api/config?t=${Date.now()}`, { headers: { 'Cache-Control': 'no-cache' } })
       ]);
 
       if (prodRes.ok) {
