@@ -4,8 +4,8 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { createClient } from '@supabase/supabase-js';
-import { INITIAL_PRODUCTS, INITIAL_STORE_CONFIG } from './src/data/initialData.js';
-import { Product, StoreConfig, YappyTransaction, OrderStatus, ChatMessage, ChatThread } from './src/types.js';
+import { INITIAL_PRODUCTS, INITIAL_STORE_CONFIG } from './src/data/initialData';
+import { Product, StoreConfig, YappyTransaction, OrderStatus, ChatMessage, ChatThread } from './src/types';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
