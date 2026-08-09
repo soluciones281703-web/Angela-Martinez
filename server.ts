@@ -208,34 +208,75 @@ app.post('/api/admin/change-password', adminAuth, (req, res) => {
 });
 
 // Store Configuration
-app.get('/api/config', (req, res) => {
+app.get('/api/config', async (req, res) => {
+  const supabase = getSupabaseClient(store.config);
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('store_config').select('*').eq('id', 'main').maybeSingle();
+      if (!error && data && data.config_data) {
+        store.config = { ...INITIAL_STORE_CONFIG, ...data.config_data };
+        saveStore(store);
+      }
+    } catch (e) {
+      console.warn('Supabase fetch config error:', e);
+    }
+  }
   res.json(store.config);
 });
 
-app.put('/api/config', adminAuth, (req, res) => {
+app.put('/api/config', adminAuth, async (req, res) => {
   store.config = { ...store.config, ...req.body };
   saveStore(store);
+
+  const supabase = getSupabaseClient(store.config);
+  if (supabase) {
+    try {
+      await supabase.from('store_config').upsert({
+        id: 'main',
+        store_name: store.config.storeName || 'AURA PERFUMERÍA',
+        logo_url: store.config.logoUrl || '',
+        yappy_phone: store.config.yappyPhone || '',
+        config_data: store.config,
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) {
+      console.error('Supabase config sync error:', e);
+    }
+  }
   res.json({ success: true, config: store.config });
 });
 
 // Products CRUD
-let supabaseHydrated = false;
-
 app.get('/api/products', async (req, res) => {
-  if (!supabaseHydrated) {
-    const supabase = getSupabaseClient(store.config);
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.from('products').select('*');
-        if (!error && data && data.length > 0) {
-          // Hydrate initial store from Supabase if available
-          store.products = data;
-          saveStore(store);
-          supabaseHydrated = true;
-        }
-      } catch (e) {
-        console.warn('Supabase fetch products error, using store:', e);
+  const supabase = getSupabaseClient(store.config);
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('products').select('*');
+      if (!error && data && data.length > 0) {
+        const mappedProducts: Product[] = data.map((item: any) => ({
+          id: String(item.id),
+          name: item.name || '',
+          category: item.category || 'perfumes',
+          price: Number(item.price || 0),
+          originalPrice: item.original_price ? Number(item.original_price) : (item.originalPrice ? Number(item.originalPrice) : undefined),
+          description: item.description || '',
+          volume: item.volume || '100 ml',
+          scentNotes: typeof item.scent_notes === 'string' ? JSON.parse(item.scent_notes) : (item.scent_notes || item.scentNotes || {}),
+          image: item.image || '',
+          additionalImages: typeof item.additional_images === 'string' ? JSON.parse(item.additional_images) : (item.additional_images || item.additionalImages || []),
+          inStock: item.in_stock ?? item.inStock ?? true,
+          stockCount: Number(item.stock_count ?? item.stockCount ?? 0),
+          isFeatured: !!(item.is_featured ?? item.isFeatured),
+          isNewArrival: !!(item.is_new_arrival ?? item.isNewArrival),
+          badgeText: item.badge_text ?? item.badgeText ?? '',
+          createdAt: item.created_at || item.createdAt || new Date().toISOString()
+        }));
+        store.products = mappedProducts;
+        saveStore(store);
+        return res.json(mappedProducts);
       }
+    } catch (e) {
+      console.warn('Supabase fetch products error, using store:', e);
     }
   }
   res.json(store.products);
@@ -268,7 +309,25 @@ app.post('/api/products', adminAuth, async (req, res) => {
   const supabase = getSupabaseClient(store.config);
   if (supabase) {
     try {
-      await supabase.from('products').upsert([newProduct]);
+      const dbProduct = {
+        id: newProduct.id,
+        name: newProduct.name,
+        category: newProduct.category,
+        price: newProduct.price,
+        original_price: newProduct.originalPrice || null,
+        description: newProduct.description,
+        volume: newProduct.volume,
+        scent_notes: newProduct.scentNotes,
+        image: newProduct.image,
+        additional_images: newProduct.additionalImages,
+        in_stock: newProduct.inStock,
+        stock_count: newProduct.stockCount,
+        is_featured: newProduct.isFeatured,
+        is_new_arrival: newProduct.isNewArrival,
+        badge_text: newProduct.badgeText,
+        created_at: newProduct.createdAt
+      };
+      await supabase.from('products').upsert([dbProduct]);
     } catch (e) {
       console.error('Supabase product sync error:', e);
     }
@@ -291,19 +350,38 @@ app.put('/api/products/:id', adminAuth, async (req, res) => {
     originalPrice: req.body.originalPrice ? parseFloat(req.body.originalPrice) : undefined
   };
 
+  const updatedProduct = store.products[index];
   saveStore(store);
 
   // Sync to Supabase if connected
   const supabase = getSupabaseClient(store.config);
   if (supabase) {
     try {
-      await supabase.from('products').upsert([store.products[index]]);
+      const dbProduct = {
+        id: updatedProduct.id,
+        name: updatedProduct.name,
+        category: updatedProduct.category,
+        price: updatedProduct.price,
+        original_price: updatedProduct.originalPrice || null,
+        description: updatedProduct.description,
+        volume: updatedProduct.volume,
+        scent_notes: updatedProduct.scentNotes,
+        image: updatedProduct.image,
+        additional_images: updatedProduct.additionalImages,
+        in_stock: updatedProduct.inStock,
+        stock_count: updatedProduct.stockCount,
+        is_featured: updatedProduct.isFeatured,
+        is_new_arrival: updatedProduct.isNewArrival,
+        badge_text: updatedProduct.badgeText,
+        created_at: updatedProduct.createdAt
+      };
+      await supabase.from('products').upsert([dbProduct]);
     } catch (e) {
       console.error('Supabase product update sync error:', e);
     }
   }
 
-  res.json({ success: true, product: store.products[index] });
+  res.json({ success: true, product: updatedProduct });
 });
 
 app.delete('/api/products/:id', adminAuth, async (req, res) => {
@@ -388,7 +466,43 @@ app.post('/api/orders', async (req, res) => {
   res.json({ success: true, order: newOrder });
 });
 
-app.get('/api/orders', adminAuth, (req, res) => {
+app.get('/api/orders', adminAuth, async (req, res) => {
+  const supabase = getSupabaseClient(store.config);
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+      if (!error && data && data.length > 0) {
+        const mappedOrders: YappyTransaction[] = data.map((o: any) => ({
+          id: String(o.id),
+          customer: {
+            name: o.customer_name || 'Cliente',
+            phone: o.customer_phone || '',
+            email: '',
+            province: 'Panamá',
+            district: '',
+            address: o.customer_address || '',
+            deliveryZone: o.delivery_zone || 'panama_metro',
+            notes: ''
+          },
+          items: typeof o.items_json === 'string' ? JSON.parse(o.items_json) : (o.items_json || []),
+          subtotal: Number(o.subtotal || 0),
+          shippingCost: Number(o.shipping_cost || 0),
+          totalAmount: Number(o.total_amount || 0),
+          yappyPhone: store.config.yappyPhone,
+          transactionRef: o.yappy_ref || '',
+          receiptImage: o.receipt_url,
+          status: o.status || 'pending',
+          createdAt: o.created_at || new Date().toISOString(),
+          updatedAt: o.updated_at || o.created_at || new Date().toISOString()
+        }));
+        store.orders = mappedOrders;
+        saveStore(store);
+        return res.json(mappedOrders);
+      }
+    } catch (e) {
+      console.warn('Supabase fetch orders error:', e);
+    }
+  }
   res.json(store.orders);
 });
 
@@ -397,15 +511,25 @@ app.put('/api/orders/:id/status', adminAuth, async (req, res) => {
   const { status } = req.body as { status: OrderStatus };
 
   const orderIdx = store.orders.findIndex(o => o.id === id);
-  if (orderIdx === -1) {
-    return res.status(404).json({ error: 'Pedido no encontrado' });
+  if (orderIdx !== -1) {
+    store.orders[orderIdx].status = status;
+    store.orders[orderIdx].updatedAt = new Date().toISOString();
   }
-
-  store.orders[orderIdx].status = status;
-  store.orders[orderIdx].updatedAt = new Date().toISOString();
   saveStore(store);
 
-  res.json({ success: true, order: store.orders[orderIdx] });
+  const supabase = getSupabaseClient(store.config);
+  if (supabase) {
+    try {
+      await supabase.from('orders').update({
+        status,
+        updated_at: new Date().toISOString()
+      }).eq('id', id);
+    } catch (e) {
+      console.error('Supabase order status update sync error:', e);
+    }
+  }
+
+  res.json({ success: true, order: orderIdx !== -1 ? store.orders[orderIdx] : { id, status } });
 });
 
 // ==================== CHAT API ENDPOINTS ====================
