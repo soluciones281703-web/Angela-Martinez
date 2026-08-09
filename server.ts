@@ -251,8 +251,8 @@ app.get('/api/products', async (req, res) => {
   const supabase = getSupabaseClient(store.config);
   if (supabase) {
     try {
-      const { data, error } = await supabase.from('products').select('*');
-      if (!error && data && data.length > 0) {
+      const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+      if (!error && data) {
         const mappedProducts: Product[] = data.map((item: any) => ({
           id: String(item.id),
           name: item.name || '',
@@ -274,6 +274,8 @@ app.get('/api/products', async (req, res) => {
         store.products = mappedProducts;
         saveStore(store);
         return res.json(mappedProducts);
+      } else if (error) {
+        console.error('Supabase fetch products error:', error);
       }
     } catch (e) {
       console.warn('Supabase fetch products error, using store:', e);
@@ -471,7 +473,7 @@ app.get('/api/orders', adminAuth, async (req, res) => {
   if (supabase) {
     try {
       const { data, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const mappedOrders: YappyTransaction[] = data.map((o: any) => ({
           id: String(o.id),
           customer: {
